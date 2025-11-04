@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block contenido %}
+
+    <h1>Hola mundo :c</h1>
+    <h1>{{titulo}}</h1>
+    {% for item in listado %}
+        <p>{{item}}</p>
+    {% endfor %}
+
+{% endblock %}
+        

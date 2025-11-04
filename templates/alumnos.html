@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block contenido %}
+    {% import "_macros.html" as macros %}
+    <h1>Registro de alumnos</h1>
+    <form action="/alumnos" method="post" novalidate>
+
+        {{macros.render_field(form.matricula)}}
+        {{macros.render_field(form.nombre)}}
+        {{macros.render_field(form.apellido)}}
+        {{macros.render_field(form.email)}}
+        <button type="submit" class="btn btn-primary">Registrar</button>
+    </form>
+
+    <h2>{{mat}}</h2>
+    <h2>{{nom}}</h2>
+    <h2>{{apell}}</h2>
+    <h2>{{email}}</h2>
+
+    <hr>
+    <form action="/alumnos" method="post">
+        <button type="submit" class="btn btn-primary">Eliminar Alumnos Registrados</button>
+    </form>
+    <br>
+    <form action="/get_cookie" method="get">
+        <button name="btnElimina" type="submit" class="btn btn-primary">Ver alumnos Registrados (cookie)</button>
+    </form>
+{% endblock %}
