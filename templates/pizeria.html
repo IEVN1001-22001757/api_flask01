@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% block contenido %}
+    {% import "_macros.html" as macros %}
+    
+    <h1 class="mb-4">Pizzeria</h1>
+
+    <form action="/pizeria" method="post" novalidate>
+        {{ pedido_form.csrf_token }} 
+
+        <div class="row">
+            
+            <div class="col-md-8">
+                <fieldset class="form-group border p-3 mb-4">
+                    <legend class="w-auto px-2">Datos del Cliente</legend>
+                    <div class="row">
+                        <div class="col-md-4">{{ macros.render_field(pedido_form.nombre, class="form-control") }}</div>
+                        <div class="col-md-4">{{ macros.render_field(pedido_form.direccion, class="form-control") }}</div>
+                        <div class="col-md-4">{{ macros.render_field(pedido_form.telefono, class="form-control") }}</div>
+                        <div class="col-md-4 mt-3">
+                            <label class="form-label">Fecha:</label>
+                            <input type="text" class="form-control" value="{{ fecha_actual }}" disabled>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="form-group border p-3 mb-4">
+                    <legend class="w-auto px-2">Configurar Pizza</legend>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Tamaño Pizza:</label>
+                            {% for subfield in pedido_form.tamanio %}
+                                <div class="form-check">
+                                    {{ subfield(class="form-check-input") }}
+                                    {{ subfield.label(class="form-check-label") }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                        <label class="form-label">Ingredientes:</label>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="ingredientes" value="Jamon" id="ingrediente_jamon">
+                            <label class="form-check-label" for="ingrediente_jamon">Jamón $10</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="ingredientes" value="Pina" id="ingrediente_pina">
+                            <label class="form-check-label" for="ingrediente_pina">Piña $10</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="ingredientes" value="Champinones" id="ingrediente_champinones">
+                            <label class="form-check-label" for="ingrediente_champinones">Champiñones $10</label>
+                        </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            {{ macros.render_field(pedido_form.num_pizzas, class="form-control") }}
+                            <div class="mt-3">
+                                <button type="submit" name="agregar" value="agregar" class="btn btn-success btn-block" formnovalidate>Agregar</button>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                
+                <fieldset class="form-group border p-3 mb-4">
+                    <legend class="w-auto px-2">Detalle del Pedido</legend>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr class="tr-head">
+                                <th>*</th>
+                                <th>Tamaño</th>
+                                <th>Ingredientes</th>
+                                <th>Núm. Pizzas</th>
+                                <th>Sub Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in pedido %}
+                            <tr>
+                                <td><input type="checkbox" name="item_to_remove" value="{{ loop.index0 }}"></td>
+                                <td>{{ item.tamanio }}</td>
+                                <td>{{ item.ingredientes if item.ingredientes else 'Ninguno' }}</td>
+                                <td>{{ item.num_pizzas }}</td>
+                                <td>${{ "%.2f" | format(item.subtotal) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center">El pedido está vacío.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>TOTAL PEDIDO:</strong></td>
+                                <td><strong>${{ "%.2f" | format(total) }}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    
+                    <button type="submit" name="terminar" value="terminar" class="btn btn-primary">Terminar</button>
+                    <button type="submit" name="quitar" value="quitar" class="btn btn-danger" formnovalidate>Quitar</button>
+                </fieldset>
+            </div>
+            
+            <div class="col-md-4">
+                <fieldset class="form-group border p-3">
+                    <legend class="w-auto px-2">Ventas del Día</legend>
+                    <p>Presiona el botón para ver el resumen de ventas acumuladas.</p>
+                    <a href="/ventas_dia" class="btn btn-info btn-block">Ventas totales por día</a>
+
+                </fieldset>
+            </div>
+            
+        </div>
+    </form>
+
+{% endblock %}

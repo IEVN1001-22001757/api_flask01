@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ventas del Día</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+
+<div class="container">
+    <h2 class="text-center mb-4 text-primary">Ventas del Día</h2>
+
+    {% if ventas %}
+        <table class="table table-striped table-bordered text-center">
+            <thead class="table-dark">
+            <tr>
+                <th>Cliente</th>
+                <th>Fecha</th>
+                <th>Total Pagado</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for v in ventas %}
+            <tr>
+                <td>{{ v.nombre }}</td>
+                <td>{{ v.fecha }}</td>
+                <td>${{ "%.2f"|format(v.total) }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="alert alert-success text-center fs-5 fw-bold">
+            Total Acumulado Hoy: ${{ "%.2f"|format(total_acumulado) }}
+        </div>
+
+        <div class="text-center">
+            <a href="/limpiar_ventas" class="btn btn-danger">
+                Borrar ventas
+            </a>
+        </div>
+
+    {% else %}
+        <div class="alert alert-info text-center fw-bold">
+            No hay ventas registradas todavía
+        </div>
+    {% endif %}
+
+    <div class="mt-4 text-center">
+        <a href="/pizeria" class="btn btn-secondary">⬅ Volver a pedidos</a>
+    </div>
+</div>
+
+</body>
+</html>

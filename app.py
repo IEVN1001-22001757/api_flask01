@@ -1,13 +1,12 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, make_response, redirect, url_for, flash, jsonify
 import math
 import forms
-from flask import make_response, jsonify
 import json
-
-
-
+from datetime import datetime 
+from json.decoder import JSONDecodeError
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'admin'
 
 @app.route('/')
 def home():
@@ -137,6 +136,164 @@ def get_cookie():
     
     estudiantes=json.loads(data_str)
     return jsonify(estudiantes)
+
+
+
+
+
+
+
+
+
+
+
+#PIZZERIA
+
+
+#Creamos las variables globales de precio y tamaño que no cambiaran
+PRECIOS_TAMANIO = {'Chica': 40, 'Mediana': 80, 'Grande': 120}
+PRECIO_INGREDIENTE = 10
+
+@app.route('/pizeria', methods=['GET', 'POST'])
+def pizeria():
+    pedido_form = forms.PedidoForm(request.form) #creamos el formulario WTForms
+
+    pedido = [] #inicializamos la lista donde guardaremos las cookies de los pedidos
+    pedido_str = request.cookies.get('pedido_actual') #obtenemos las cookies guardadas del pedido
+
+
+    #convertimos la cookie Json en una lista de Python si existe
+    if pedido_str:
+        try:
+            pedido = json.loads(pedido_str)
+        except JSONDecodeError:
+            pedido = []
+
+    total = sum(item['subtotal'] for item in pedido) #calculamos el total actual, cumando el campo subtotal de cada pizza en la lista pedido
+
+
+
+    #declaracion de funcionamiento de los botones
+    if request.method == 'POST':
+        
+        # ===== BOTÓN QUITAR =====
+        if request.form.get('quitar') is not None: #valida que se precione el boton "quitar"
+            items_a_quitar = request.form.getlist('item_to_remove')#Obtiene la lista de checkboxes que se desean eliminar
+
+            if not items_a_quitar:
+                return redirect(url_for('pizeria')) #si no se selecciona algun pedido solo se carga de nuevo la pagina sin hacer nada manteniendo las cookies actuales
+
+
+            #aqui eliminamos cada cookie guardada en la lista para eliminar eliminando las posiciones desde el final al inicio recorriendo los indices y eliminandoos con .pop
+            indices_a_eliminar = sorted([int(i) for i in items_a_quitar], reverse=True)
+            for index in indices_a_eliminar:
+                if 0 <= index < len(pedido):
+                    pedido.pop(index)
+            
+            
+            redirect_response = make_response(redirect(url_for('pizeria')))#creamos una respuesta que redirige a la pagina principal despues de eliminar
+            redirect_response.set_cookie('pedido_actual', json.dumps(pedido))#volvemos a guardar la lista de pedidos que quedaron en formato json de la cookie para cuando actualizemos se conserven las cookies
+            return redirect_response
+
+
+        # ===== BOTÓN AGREGAR =====
+        if request.form.get('agregar') is not None: #validamos que se precione "agregar"
+
+            tamanio = pedido_form.tamanio.data #obtenemos el radioboton del tamaño elegido
+            ingredientes_seleccionados = request.form.getlist('ingredientes') #obtenemos la lista de los ingredientes elegidos
+            num_pizzas = pedido_form.num_pizzas.data #obtenemos el num de pizzas a comprar
+
+            # Validamos que se seleccionen los datos de la pizza, si no mandamos un script de alert y cargamos la pagina de nuevo
+            if not tamanio or not num_pizzas:
+                return make_response("""<script>alert('Selecciona tamaño y número de pizzas'); window.location='/pizeria';</script>""")
+            
+            #calculamos el subtotal
+            precio_base = PRECIOS_TAMANIO.get(tamanio, 0) #obtenemos del diccionario de precios por tamaño el valor elegido
+            costo_ing = len(ingredientes_seleccionados) * PRECIO_INGREDIENTE
+            subtotal = (precio_base + costo_ing) * num_pizzas
+
+            #contruimos el pedido y lo agregamos a la lista
+            item = {
+                'tamanio': tamanio,
+                'ingredientes': ', '.join(ingredientes_seleccionados) if ingredientes_seleccionados else 'Ninguno',
+                'num_pizzas': num_pizzas,
+                'subtotal': subtotal
+            }
+            pedido.append(item) #añade la pizza a la cookie de pedidos
+
+            #redirigimos a la misma pagina y guardamos la cookie una tras otra
+            redirect_response = make_response(redirect(url_for('pizeria')))
+            redirect_response.set_cookie('pedido_actual', json.dumps(pedido))
+            return redirect_response
+                
+
+        # ===== BOTÓN TERMINAR =====
+        if request.form.get('terminar') is not None: #validamos que se precione "terminar"
+
+            #si no hay oedidos agregados saltara una alerta para agregar alguna pizza
+            if not pedido:
+                return make_response("""<script>alert('El pedido está vacío'); window.location='/pizeria';</script>""")
+
+            # Validamos que se llenen los formularios del cliente para agregar la infor a la cookie, si no se manda una alerta
+            if not pedido_form.nombre.data or not pedido_form.direccion.data or not pedido_form.telefono.data:
+                return make_response("""<script>alert('Completa los datos del cliente para finalizar'); window.location='/pizeria';</script>""")
+            
+            #recogemos los datos del cliente necesarios
+            nombre = pedido_form.nombre.data
+            direccion = pedido_form.direccion.data
+            telefono = pedido_form.telefono.data
+            fecha = datetime.now().strftime("%d-%m-%Y")
+
+            # Guardamos en cookie_ventas
+            ventas_str = request.cookies.get("cookie_ventas") #validamos que exista la cookie_ventas
+            ventas = json.loads(ventas_str) if ventas_str else [] #creamos una lista llamada ventas 
+            
+            #agregamos las ventas actuales como diccionario guardando los datos del cliente y el total
+            ventas.append({
+                "nombre": nombre,
+                "direccion": direccion,
+                "telefono": telefono,
+                "fecha": fecha,
+                "total": total
+            })
+
+            # Mensaje de confirmacion al dar terminar y cargamos la misma pagina
+            js = f"""<script>alert("Pedido Completado\\nCliente: {nombre}\\nTotal a pagar: ${total:.2f}");window.location = '/pizeria';</script>"""
+            resp = make_response(js)
+            # Guardar cookies en la misma respuesta (max_age y samesite para que se vean en Chrome)
+            resp.set_cookie("cookie_ventas", json.dumps(ventas), max_age=86400, samesite="Lax")
+            resp.set_cookie("pedido_actual", json.dumps([]), max_age=86400, samesite="Lax")
+            return resp
+
+        
+    # GET
+    # Si la peticion no fue POST renderizamos el html de pizeria y enviamos al html las variables:
+    return render_template("pizeria.html",
+        pedido_form=pedido_form,
+        pedido=pedido,
+        total=total,
+        fecha_actual=datetime.now().strftime('%d-%m-%Y'))
+
+
+#en la pantalla de ventas por dia podemos eliminar las cookies guardadas en ventas_dia
+@app.route('/limpiar_ventas')
+def limpiar_ventas():
+    response = make_response(redirect(url_for('ventas_dia')))
+    response.delete_cookie('cookie_ventas')
+    flash("Historial de ventas eliminado correctamente", "warning")
+    return response
+
+#mostramos las ventas del dia de los clientes que compraron
+@app.route('/ventas_dia')
+def ventas_dia():
+    ventas_str = request.cookies.get('cookie_ventas')
+    ventas = json.loads(ventas_str) if ventas_str else []
+
+    total_acumulado = sum(v['total'] for v in ventas)
+
+    return render_template('ventas_dia.html', ventas=ventas, total_acumulado=total_acumulado)
+    
+    
 
 
 
